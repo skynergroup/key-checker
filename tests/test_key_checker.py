@@ -40,3 +40,143 @@ def test_cli_overrides_dotenv(tmp_path):
     with patch.dict(os.environ, {}, clear=True):
         keys = load_keys(cli_args=cli, dotenv_path=str(dotenv_file))
     assert keys["openai"] == "sk-cli"
+
+
+import httpx
+import respx
+from key_checker import check_anthropic, check_openai, check_gemini, check_nvidia, check_openrouter, CheckResult
+
+
+@pytest.mark.asyncio
+async def test_check_openai_valid():
+    with respx.mock:
+        respx.get("https://api.openai.com/v1/models").mock(
+            return_value=httpx.Response(200, json={"data": [{"id": "gpt-4o"}]})
+        )
+        result = await check_openai("sk-test")
+    assert result.valid is True
+    assert result.status == "Valid"
+
+
+@pytest.mark.asyncio
+async def test_check_openai_invalid():
+    with respx.mock:
+        respx.get("https://api.openai.com/v1/models").mock(
+            return_value=httpx.Response(401, json={"error": {"message": "Invalid API key"}})
+        )
+        result = await check_openai("sk-bad")
+    assert result.valid is False
+    assert result.status == "Invalid"
+
+
+@pytest.mark.asyncio
+async def test_check_anthropic_valid():
+    with respx.mock:
+        respx.post("https://api.anthropic.com/v1/messages").mock(
+            return_value=httpx.Response(200, json={
+                "content": [{"type": "text", "text": "hi"}],
+                "model": "claude-sonnet-4-20250514",
+            })
+        )
+        result = await check_anthropic("sk-ant-test")
+    assert result.valid is True
+    assert result.status == "Valid"
+
+
+@pytest.mark.asyncio
+async def test_check_anthropic_invalid():
+    with respx.mock:
+        respx.post("https://api.anthropic.com/v1/messages").mock(
+            return_value=httpx.Response(401, json={"error": {"message": "Invalid API key"}})
+        )
+        result = await check_anthropic("sk-ant-bad")
+    assert result.valid is False
+    assert result.status == "Invalid"
+
+
+@pytest.mark.asyncio
+async def test_check_gemini_valid():
+    with respx.mock:
+        respx.get("https://generativelanguage.googleapis.com/v1beta/models").mock(
+            return_value=httpx.Response(200, json={"models": [{"name": "models/gemini-2.0-flash"}]})
+        )
+        result = await check_gemini("AIza-test")
+    assert result.valid is True
+    assert result.status == "Valid"
+
+
+@pytest.mark.asyncio
+async def test_check_gemini_invalid():
+    with respx.mock:
+        respx.get("https://generativelanguage.googleapis.com/v1beta/models").mock(
+            return_value=httpx.Response(403, json={"error": {"message": "API key not valid"}})
+        )
+        result = await check_gemini("AIza-bad")
+    assert result.valid is False
+    assert result.status == "Invalid"
+
+
+@pytest.mark.asyncio
+async def test_check_nvidia_valid():
+    with respx.mock:
+        respx.get("https://integrate.api.nvidia.com/v1/models").mock(
+            return_value=httpx.Response(200, json={"data": [{"id": "meta/llama-3.1-8b-instruct"}]})
+        )
+        result = await check_nvidia("nvapi-test")
+    assert result.valid is True
+    assert result.status == "Valid"
+
+
+@pytest.mark.asyncio
+async def test_check_nvidia_invalid():
+    with respx.mock:
+        respx.get("https://integrate.api.nvidia.com/v1/models").mock(
+            return_value=httpx.Response(401, json={"error": "Unauthorized"})
+        )
+        result = await check_nvidia("nvapi-bad")
+    assert result.valid is False
+    assert result.status == "Invalid"
+
+
+@pytest.mark.asyncio
+async def test_check_openrouter_valid():
+    with respx.mock:
+        respx.get("https://openrouter.ai/api/v1/auth/key").mock(
+            return_value=httpx.Response(200, json={
+                "data": {"label": "test", "limit": 10.0, "usage": 2.5}
+            })
+        )
+        result = await check_openrouter("sk-or-test")
+    assert result.valid is True
+    assert "$7.50 credits remaining" in result.detail
+
+
+@pytest.mark.asyncio
+async def test_check_openrouter_invalid():
+    with respx.mock:
+        respx.get("https://openrouter.ai/api/v1/auth/key").mock(
+            return_value=httpx.Response(401, json={"error": "Invalid key"})
+        )
+        result = await check_openrouter("sk-or-bad")
+    assert result.valid is False
+    assert result.status == "Invalid"
+
+
+@pytest.mark.asyncio
+async def test_check_network_error():
+    with respx.mock:
+        respx.get("https://api.openai.com/v1/models").mock(side_effect=httpx.ConnectError("Connection refused"))
+        result = await check_openai("sk-test")
+    assert result.valid is False
+    assert result.status == "Unreachable"
+
+
+@pytest.mark.asyncio
+async def test_check_rate_limited():
+    with respx.mock:
+        respx.get("https://api.openai.com/v1/models").mock(
+            return_value=httpx.Response(429, json={"error": {"message": "Rate limited"}})
+        )
+        result = await check_openai("sk-test")
+    assert result.valid is True
+    assert result.status == "Valid (rate limited)"
