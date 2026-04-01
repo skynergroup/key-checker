@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import argparse
 import asyncio
 import os
+import sys
 from dataclasses import dataclass
 
 import httpx
@@ -214,3 +216,48 @@ def format_table(results: list[CheckResult]) -> str:
     console = Console(file=buf, force_terminal=True)
     console.print(table)
     return buf.getvalue()
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="key-checker",
+        description="Validate API keys for AI providers",
+    )
+    parser.add_argument("--anthropic", metavar="KEY", help="Anthropic API key")
+    parser.add_argument("--openai", metavar="KEY", help="OpenAI API key")
+    parser.add_argument("--gemini", metavar="KEY", help="Gemini API key")
+    parser.add_argument("--nvidia", metavar="KEY", help="NVIDIA API key")
+    parser.add_argument("--openrouter", metavar="KEY", help="OpenRouter API key")
+    parser.add_argument("--json", action="store_true", help="Output as JSON")
+    return parser
+
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+
+    cli_args = {
+        name: getattr(args, name)
+        for name in PROVIDERS
+        if getattr(args, name) is not None
+    }
+
+    keys = load_keys(cli_args)
+
+    if not keys:
+        print("No API keys found. Provide keys via CLI args, .env file, or environment variables.")
+        sys.exit(1)
+
+    results = asyncio.run(check_all(keys))
+
+    if args.json:
+        print(format_json(results))
+    else:
+        print(format_table(results))
+
+    if any(not r.valid for r in results):
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

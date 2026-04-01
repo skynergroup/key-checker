@@ -207,3 +207,20 @@ def test_format_table():
     assert "OpenAI" in output
     assert "Valid" in output
     assert "gpt-4o" in output
+
+
+from key_checker import build_parser
+
+
+def test_build_parser_provider_args():
+    parser = build_parser()
+    args = parser.parse_args(["--anthropic", "sk-test", "--json"])
+    assert args.anthropic == "sk-test"
+    assert args.json is True
+
+
+def test_build_parser_no_args():
+    parser = build_parser()
+    args = parser.parse_args([])
+    assert args.anthropic is None
+    assert args.json is False
