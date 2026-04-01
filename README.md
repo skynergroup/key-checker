@@ -22,6 +22,21 @@ source .venv/bin/activate
 pip install -e .
 ```
 
+## Commands
+
+```
+key-checker                                         # Check all keys from .env or environment
+key-checker --anthropic sk-ant-xxx                  # Check a single Anthropic key
+key-checker --openai sk-xxx                         # Check a single OpenAI key
+key-checker --gemini AIza-xxx                       # Check a single Gemini key
+key-checker --nvidia nvapi-xxx                      # Check a single NVIDIA key
+key-checker --openrouter sk-or-xxx                  # Check a single OpenRouter key
+key-checker --anthropic sk-ant-xxx --openai sk-xxx  # Check multiple keys at once
+key-checker --json                                  # Output results as JSON
+key-checker --anthropic sk-ant-xxx --json           # Combine CLI keys with JSON output
+key-checker --help                                  # Show help
+```
+
 ## Usage
 
 ### Pass keys directly
