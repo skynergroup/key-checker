@@ -180,3 +180,30 @@ async def test_check_rate_limited():
         result = await check_openai("sk-test")
     assert result.valid is True
     assert result.status == "Valid (rate limited)"
+
+
+import json
+from key_checker import format_json, format_table
+
+
+def test_format_json():
+    results = [
+        CheckResult(provider="OpenAI", valid=True, status="Valid", detail="gpt-4o"),
+        CheckResult(provider="Gemini", valid=False, status="Invalid", detail="403"),
+    ]
+    output = format_json(results)
+    parsed = json.loads(output)
+    assert len(parsed) == 2
+    assert parsed[0]["provider"] == "OpenAI"
+    assert parsed[0]["valid"] is True
+    assert parsed[1]["valid"] is False
+
+
+def test_format_table():
+    results = [
+        CheckResult(provider="OpenAI", valid=True, status="Valid", detail="gpt-4o"),
+    ]
+    output = format_table(results)
+    assert "OpenAI" in output
+    assert "Valid" in output
+    assert "gpt-4o" in output

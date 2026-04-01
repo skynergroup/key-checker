@@ -174,3 +174,43 @@ CHECKERS = {
 async def check_all(keys: dict[str, str]) -> list[CheckResult]:
     tasks = [CHECKERS[provider](key) for provider, key in keys.items()]
     return await asyncio.gather(*tasks)
+
+
+import json as json_mod
+from io import StringIO
+from rich.console import Console
+from rich.table import Table
+
+
+def format_json(results: list[CheckResult]) -> str:
+    return json_mod.dumps(
+        [
+            {
+                "provider": r.provider,
+                "valid": r.valid,
+                "status": r.status,
+                "detail": r.detail,
+            }
+            for r in results
+        ],
+        indent=2,
+    )
+
+
+def format_table(results: list[CheckResult]) -> str:
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Provider", style="cyan", min_width=12)
+    table.add_column("Status", min_width=10)
+    table.add_column("Detail")
+
+    for r in results:
+        if r.valid:
+            status = f"[green]✓ {r.status}[/green]"
+        else:
+            status = f"[red]✗ {r.status}[/red]"
+        table.add_row(r.provider, status, r.detail)
+
+    buf = StringIO()
+    console = Console(file=buf, force_terminal=True)
+    console.print(table)
+    return buf.getvalue()
