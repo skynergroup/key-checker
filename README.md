@@ -15,7 +15,7 @@ CLI tool to validate API keys for AI providers. Checks whether your keys are sti
 ## Installation
 
 ```bash
-git clone https://github.com/skynergroup/key-checker.git
+git clone https://github.com/yashiels/key-checker.git
 cd key-checker
 python3 -m venv .venv
 source .venv/bin/activate
